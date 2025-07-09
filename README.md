@@ -10,6 +10,7 @@ Il est pensé pour permettre à tout le monde de jouer gratuitement, sans avoir 
 
 ## Todo :
 - [ ] Ajouter des cartes de rôles supplémentaires
+- [ ] Mettre à jour les règles du jeu
 - [ ] Créer une nouvelle version du pdf d'impression
 - [ ] Créer une nouvelle version du manuel du maître du jeu
 - [ ] Créer un site web pour le jeu
