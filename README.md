@@ -7,6 +7,7 @@ Il est pensé pour permettre à tout le monde de jouer gratuitement, sans avoir 
 
 - Des cartes à imprimer (rôles, villageois, loups, etc.)
 - Un guide du maître du jeu rédigé avec soin pour faciliter la prise en main des parties.
+- Un pdf d'impression pour vous faciliter la tâche (ne téléchargez que celui ci)
 
 ## Todo :
 - [ ] Ajouter des cartes de rôles supplémentaires
