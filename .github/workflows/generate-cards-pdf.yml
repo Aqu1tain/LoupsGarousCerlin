@@ -1,0 +1,157 @@
+name: Génération automatique du PDF des cartes
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'Cartes/**'
+
+jobs:
+  generate-cards-pdf:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install Pillow reportlab
+
+      - name: 🎲 Generate cards PDF
+        run: |
+          python generate_cards_pdf.py
+
+      - name: 📋 Display generation summary
+        run: |
+          if [ -f "cartes_impression.pdf" ]; then
+            echo "✅ PDF generated successfully!"
+            ls -lh cartes_impression.pdf
+            echo "📊 PDF size: $(du -h cartes_impression.pdf | cut -f1)"
+          else
+            echo "❌ PDF generation failed!"
+            exit 1
+          fi
+
+      - name: 📤 Upload PDF as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: cartes-impression-pdf
+          path: cartes_impression.pdf
+          retention-days: 30
+
+      - name: 💾 Commit and push PDF to repository
+        run: |
+          # Configure git
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Add the generated PDF
+          git add cartes_impression.pdf
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "📝 No changes to commit - PDF is already up to date"
+          else
+            # Commit with informative message
+            CARD_COUNT=$(find Cartes -name "*.png" | wc -l)
+            git commit -m "🎲 Auto-update PDF d'impression ($CARD_COUNT cartes)
+          
+            Génération automatique suite aux modifications des cartes.
+          
+            📅 $(date '+%Y-%m-%d %H:%M:%S UTC')
+            🔄 Action: ${{ github.workflow }}
+            📝 Commit: ${{ github.sha }}"
+          
+            # Push the changes
+            git push
+            echo "✅ PDF committed and pushed successfully!"
+          fi
+
+      - name: 📊 Generate summary comment (for PRs)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Count PNG files
+            const { execSync } = require('child_process');
+            const cardCount = execSync('find Cartes -name "*.png" | wc -l', { encoding: 'utf-8' }).trim();
+            
+            // Check if PDF was generated
+            const pdfExists = fs.existsSync('cartes_impression.pdf');
+            const pdfSize = pdfExists ? execSync('du -h cartes_impression.pdf | cut -f1', { encoding: 'utf-8' }).trim() : 'N/A';
+            
+            const body = `## 🎲 Génération automatique du PDF
+            
+            **Résultat :** ${pdfExists ? '✅ Succès' : '❌ Échec'}
+            **Cartes détectées :** ${cardCount} fichiers PNG
+            **Taille du PDF :** ${pdfSize}
+            
+            ${pdfExists ? '📎 Le PDF mis à jour est disponible dans les artifacts de cette action.' : '⚠️ Vérifiez les logs pour diagnostiquer le problème.'}
+            
+            ---
+            *Généré automatiquement par l'action GitHub lors de la modification des cartes.*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  # Job optionnel pour valider la structure des cartes
+  validate-cards:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔍 Validate card structure
+        run: |
+          echo "🎯 Validation de la structure des cartes..."
+          
+          # Check if Cartes directory exists
+          if [ ! -d "Cartes" ]; then
+            echo "❌ Le dossier 'Cartes' n'existe pas!"
+            exit 1
+          fi
+          
+          # Count PNG files
+          PNG_COUNT=$(find Cartes -name "*.png" | wc -l)
+          echo "📊 Fichiers PNG trouvés: $PNG_COUNT"
+          
+          if [ $PNG_COUNT -eq 0 ]; then
+            echo "⚠️ Aucun fichier PNG trouvé dans le dossier Cartes/"
+            exit 1
+          fi
+          
+          # Check for required files (optional but informative)
+          SPECIAL_CARDS=("Simple Villageois.png" "Loup Garou.png" "Dos-Cartes.png")
+          
+          echo "🔍 Vérification des cartes spéciales:"
+          for card in "${SPECIAL_CARDS[@]}"; do
+            if [ -f "Cartes/$card" ]; then
+              echo "  ✅ $card"
+            else
+              echo "  ⚠️ $card (optionnel)"
+            fi
+          done
+          
+          # List all cards for reference
+          echo ""
+          echo "📋 Liste complète des cartes:"
+          find Cartes -name "*.png" -exec basename {} \; | sort | nl
+          
+          echo ""
+          echo "✅ Validation terminée - Structure valide!"
