@@ -42,7 +42,7 @@ jobs:
           fi
 
       - name: 📤 Upload PDF as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cartes-impression-pdf
           path: cartes_impression.pdf
